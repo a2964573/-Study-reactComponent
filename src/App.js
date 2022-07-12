@@ -1,18 +1,28 @@
 import logo from './logo.svg';
 import './App.css';
+import {useState} from 'react';
 
 function Header(props){
   return <header>
   <h1>
-    {props.title}
+    <a href="/" onClick={(event)=>{ //화살표함수 매개변수 event
+      event.preventDefault(); //기본 이벤트를 발생시키지 않음.
+      props.onChangeMode(); //APP() >> Header >> onChangeMode() 실행
+    }}>{props.title}</a> 
   </h1>
   </header>
 }
 function Content(props){
-  const lis=[];
-  for(let i=0; i<props.topics.length; i++){
-    let t=props.topics[i];
-    lis.push(<li key={t.id}><a href={t.rink} target={t.target}>{t.title}</a></li>);
+  const lis=[]; //리스트를 넣을 배열 생성
+  for(let i=0; i<props.topics.length; i++){ //APP() >> topics[] 요소만큼 반복
+    let t=props.topics[i]; //변수 t에 저장
+    lis.push(<li key={t.id}>
+      <a id={t.id} href={t.body} target={t.target} onClick={(event)=>{ //↑생성한 배열에 topics[] 요소를 push
+        event.preventDefault();
+        props.onChangeMode(Number(event.target.id)); 
+        //↑ APP() >> Content >> onChangeMode의 매개변수에게 전달
+        //↑ 이 값은 암묵적 변환으로 인해 문자열이 되므로 Number로 명시적 타입 변경
+    }}>{t.title}</a></li>);
   }
   return <nav>
   <h2>
@@ -22,25 +32,81 @@ function Content(props){
   </h2>
   </nav>
 }
-function Footer(){
+function Footer(props){ //함수로 직접 생성한 태그
   return <footer>
-  링크를 클릭하면 사이트가 새 창으로 열립니다.
+    <h2><p>{props.title}</p></h2>
+    <h3><p>{props.body}</p></h3>
   </footer>
 }
+function Create(props){
+  return <article>
+    <h2>Create</h2>
+    <form onSubmit={(event)=>{
+      event.preventDefault();
+      const title=event.target.title.value; //이 폼의 title 값을 title에 저장
+      const body=event.target.body.value; //이 폼의 body 값을 body에 저장
+      props.onCreate(title, body); //Create >> onCreate 매개변수에 전달
+    }}>
+      <p><input type="text" name="title" placeholder="title"/></p>
+      <p><textarea name="body" placeholder="body"></textarea></p>
+      <p><input type="submit" value="create"></input></p>
+    </form>
+  </article>
+}
 
-function App() {
-  const topics=[
-    {id:1, title:"네이버 바로가기", rink:"https://www.naver.com", target:"_blank"},
-    {id:2, title:"구글 바로가기", rink:"https://www.google.com", target:"_blank"},
-    {id:3, title:"다음 바로가기", rink:"https://www.daum.net", target:"_blank"}
-  ];
+function App() { 
+  // const _mode=useState("WELCOME"); useSate는 배열을 반환한다.
+  // const mode=_mode[0]; _mode배열의 인덱스0은 상태를 나타낸다.
+  // const setMode=_mode[1]; _mode배열의 인덱스1은 상태를 변경하는 함수를 나타낸다.
+  const [mode, setMode]=useState("WELCOME"); //↑ 같은 문법
+  const [id, setId]=useState(null);
+  const [nextId, setNextId]=useState(4);
+  const [topics, setTopics]=useState([
+    {id:1, title:"네이버 바로가기", body:"https://www.naver.com", target:"_blank"},
+    {id:2, title:"구글 바로가기", body:"https://www.google.com", target:"_blank"},
+    {id:3, title:"다음 바로가기", body:"https://www.daum.net", target:"_blank"}
+  ]);
+  let content=null;
+  if(mode==="WELCOME"){ //만약 mode 값이 WELCOME이라면 WELCOME 타이틀을 가진 Footer 생성
+    content=<Footer title="WELCOME" body="링크를 클릭하면 사이트가 새 창으로 열립니다."></Footer>
+  } else if(mode==="READ"){
+    let title, body; 
+    for(let i=0; i<topics.length; i++){ //리스트 개수만큼 반복
+      if(topics[i].id===id){ //클릭한 리스트의 id와 동일한 id 찾기
+        title=topics[i].title; //title 변수에 분별된 요소의 title값 저장
+        body=topics[i].body; //rink 변수에 분별된 요소의 rink값 저장
+      }
+    }
+    content=<Footer title={title} body={body}></Footer> 
+    //↑ Footer >> title과 body에 title과 rink값 저장 및 표출
+  } else if(mode==="CREATE"){
+    content=<Create onCreate={(title, body)=>{
+      const newTopic={id:nextId, title:title, body:body}; 
+      //↑ newTopic에 전달받은 title, body, nextId상태 값을 요소로 저장
+      const newTopics=[...topics]; //newTopics에 스프레드문법을 이용해 새로운 topics배열 저장
+      newTopics.push(newTopic); //newTopics에 newTopic 요소를 push
+      setTopics(newTopics); //topics의 상태를 변경(갱신)
+      setMode("READ"); //mode를 READ로 변경(갱신)함으로 새로운 리스트 생성과 동시에 본문 표출
+      setId(nextId); //id의 상태를 변경(nextId의 값)
+      setNextId(nextId+1); //nextId 값에 1을 더함으로 상태 변경
+    }}></Create>
+  }
   return (
     <div>
-      <Header title="WEBSITE REDIRECT"></Header>
-      <Content topics={topics}></Content>
-      <Footer></Footer>
+      <Header title="WEBSITE REDIRECT" onChangeMode={()=>{
+        setMode("WELCOME");
+      }}></Header>
+      <Content topics={topics} onChangeMode={(_id)=>{ //매개변수를 받아 alert에 저장
+        setMode("READ");
+        setId(_id);
+      }}></Content>
+      {content}
+      <a href="/create" onClick={(event)=>{
+        event.preventDefault();
+        setMode("CREATE");
+      }}>Create</a>
     </div>
   );
 }
 
-export default App;
+export default App; //index.js에게 전달
